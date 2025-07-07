@@ -29,9 +29,22 @@
 		00E82D2E2E1A5FD90013C69F /* LeBot JamesUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "LeBot JamesUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		00E82D792E1A68860013C69F /* Exceptions for "LeBot James" folder in "LeBot James" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 00E82D132E1A5FD80013C69F /* LeBot James */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		00E82D162E1A5FD80013C69F /* LeBot James */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				00E82D792E1A68860013C69F /* Exceptions for "LeBot James" folder in "LeBot James" target */,
+			);
 			path = "LeBot James";
 			sourceTree = "<group>";
 		};
@@ -102,6 +115,7 @@
 				00E82D102E1A5FD80013C69F /* Sources */,
 				00E82D112E1A5FD80013C69F /* Frameworks */,
 				00E82D122E1A5FD80013C69F /* Resources */,
+				00E82D782E1A66480013C69F /* ShellScript */,
 			);
 			buildRules = (
 			);
@@ -230,6 +244,30 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		00E82D782E1A66480013C69F /* ShellScript */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/.env",
+			);
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "
+";
+			showEnvVarsInLog = 0;
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		00E82D102E1A5FD80013C69F /* Sources */ = {
@@ -396,8 +434,11 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"LeBot James/Preview Content\"";
+				DEVELOPMENT_TEAM = V43797R8Q6;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Let's see that shot! I need the camera to count your swishes and analyze your misses.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Let me use the mic to cheer you on (and correct your form).";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -426,6 +467,8 @@
 				DEVELOPMENT_ASSET_PATHS = "\"LeBot James/Preview Content\"";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Let's see that shot! I need the camera to count your swishes and analyze your misses.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Let me use the mic to cheer you on (and correct your form).";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

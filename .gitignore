@@ -1,0 +1,42 @@
+# Environment variables
+.env
+
+# Configuration files with secrets
+LeBot James/Configuration/Config.swift
+
+# Xcode
+*.xcuserdatad/
+*.xcworkspace/
+xcuserdata/
+DerivedData/
+.DS_Store
+
+# iOS
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Swift Package Manager
+.build/
+Package.resolved
+.swiftpm/
+
+# CocoaPods
+Pods/
+*.xcworkspace
+
+# Carthage
+Carthage/Build/
+
+# Accio dependency management
+Dependencies/
+.accio/
+
+# fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+fastlane/test_output
+
+# Code Injection
+iOSInjectionProject/
