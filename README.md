@@ -1,4 +1,4 @@
-# LeBot_James: AI Basketball Coach 🏀
+# LeBot James: Real Time AI Basketball Coach 🏀
 
 Transform your solo basketball practice into professional training sessions with real-time AI coaching powered by Google's Gemini 2.0 Flash.
 
