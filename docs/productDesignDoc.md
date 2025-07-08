@@ -1,86 +1,107 @@
-LeBot_James: AI Basketball Coach – Product Design Document (MVP)
-1. Overview
+# LeBot_James: AI Basketball Coach – Product Design Document (Production)
+## 1. Overview
 
 Solo basketball practice is a fundamental part of player development, but it often lacks a critical component: immediate, expert feedback. Players can shoot for hours, unknowingly reinforcing bad habits in their form. LeBot_James is an iOS-based AI basketball coach that watches you practice, providing the real-time analysis and feedback of a personal trainer, right on your iPhone.
 
-The app uses the phone's camera, positioned on a tripod, to observe the player. By intelligently detecting shooting motions through advanced pose analysis and analyzing key frames with Google's Gemini Live API, it provides real-time shot counting and personalized, actionable coaching tips delivered via enhanced audio feedback and rich visual overlays. The system analyzes shooting form, shot trajectory, and the outcome (make or miss) to deliver context-aware feedback after every attempt with Michael Jordan-style authority.
+The app uses the phone's camera, positioned on a tripod, to observe the player. By intelligently detecting shooting motions through advanced pose analysis and analyzing frames at 1 FPS with Google's Gemini 2.0 Flash via Live API, it provides real-time shot counting and personalized, actionable coaching tips delivered via enhanced audio feedback and rich visual overlays. The system analyzes shooting form, shot classification, and provides structured feedback with "The GOAT" persona - embodying the spirit of Michael Jordan and LeBron James.
 
-This app is iOS-first, built for simplicity and effectiveness. The MVP is hyper-focused on two core functions: counting shots and providing passive coaching to improve a player's form. The system design emphasizes:
+This production-ready app is iOS-first, built for performance and reliability. The system is hyper-focused on two core functions: automatic shot counting and real-time AI coaching to perfect your form. ### The system design emphasizes:
 
-Hands-Free Operation: Set up your phone on a tripod, start the session, and practice without interruption.
+**Hands-Free Operation**: Set up your phone on a tripod, start the session, and practice without interruption.
 
-Real-Time Shot Counting: An on-screen counter automatically tracks makes and total attempts.
+**1 FPS AI Analysis**: Intelligent frame throttling sends one optimal frame per second to Gemini 2.0 Flash for analysis, balancing real-time feedback with API efficiency.
 
-Per-Shot AI Coaching: After each shot, receive concise audio feedback with Michael Jordan-style authority based on real-time AI analysis of your form, delivered with outcome-specific voice modulation.
+**The GOAT Coaching Persona**: AI feedback embodies the intensity and wisdom of basketball legends, providing both positive reinforcement and corrective critique.
 
-Rich Visual Feedback: SwiftUI overlays provide instant visual confirmation with enhanced animations, color-coded shooting percentages, and contextual coaching tips displayed directly over the camera feed.
+**Thread-Safe Architecture**: Proper main/background thread separation ensures smooth UI updates while processing camera frames and AI responses.
 
-Real-Time AI Analysis: The app uses Google Gemini Live API via WebSocket connection for low-latency, real-time analysis, eliminating the traditional request-response delays of standard API calls.
+**Rich Visual Feedback**: SwiftUI overlays provide instant visual confirmation with enhanced animations, color-coded shooting percentages, and full-screen landscape support.
 
-Minimalist Interface: The app consists of only two primary screens: a simple entry/paywall screen and the main camera view where all the action happens.
+**Secure Authentication**: Production-ready ephemeral token system with backend proxy ensures secure API access without exposing credentials.
 
-LeBot_James aims to be the ultimate practice partner, making every training session more productive by providing the immediate feedback loop necessary for meaningful improvement.
+**Minimalist Interface**: The app consists of only two primary screens: a simple entry screen and the main camera view where all the action happens.
 
-2. Feature Overview (MVP)
+LeBot_James is the ultimate practice partner, using cutting-edge AI to make every training session more productive through immediate, expert-level feedback.
 
-The MVP will focus on delivering a tight, valuable feedback loop with just two core features.
+## 2. Feature Overview (Production)
 
-Feature	Description	Implementation Details
-1. **ENHANCED** Automatic Shot Counting	The app detects each shot attempt through advanced pose analysis and outcome determination, displaying enhanced visual feedback with shooting statistics.	**Advanced Computer Vision**: Uses VNDetectHumanBodyPoseRequest to analyze shooting motion transitions from stance to release. Smart frame selection sends optimal frames to Gemini Live API for real-time outcome analysis. **Rich UI**: Displays makes/total with color-coded percentages (green: 80%+, yellow: 60-79%, orange: 40-59%, red: <40%). Enhanced animations with spring transitions and contextual feedback overlays.
-2. **ENHANCED** Real-Time AI Coaching	After each shot, the AI provides contextual audio feedback with Michael Jordan-style authority, enhanced by outcome-specific voice modulation and comprehensive coaching knowledge.	**Live API Integration**: Direct WebSocket connection to Gemini Live API (gemini-2.0-flash-exp) for low-latency analysis. **Enhanced Audio**: AVSpeechSynthesizer with outcome-based voice settings, proper audio session management, and authoritative delivery. **Contextual Tips**: Comprehensive coaching_tips.json with categorized feedback (general tips, makes, misses, encouragement) for dynamic, non-repetitive coaching. **Smart Prompting**: Advanced prompt engineering with specific basketball coaching instructions and avoidance of previous tips.
-3. **UPDATED** System Architecture
+The production system delivers a sophisticated feedback loop with two perfected core features.
 
-The architecture is streamlined for real-time performance with direct API integration and enhanced local intelligence.
+| Feature | Description | Implementation Details |
+|---------|-------------|------------------------|
+| **1. Automatic Shot Counting** | The app detects each shot attempt through advanced computer vision and provides structured AI analysis with visual feedback. | **Vision Framework**: Uses VNDetectTrajectoriesRequest with CMSampleBuffer for proper timestamp preservation. **1 FPS Processing**: Intelligent throttling sends frames to AI once per second. **Rich UI**: Displays makes/total with color-coded percentages and professional animations. |
+| **2. Real-Time AI Coaching** | "The GOAT" AI persona provides structured feedback with positive reinforcement and corrective critique after analyzing each shot. | **Gemini 2.0 Flash Integration**: WebSocket connection for sub-second responses with structured JSON output. **The GOAT Prompt**: Comprehensive system prompt creating Michael Jordan/LeBron James coaching persona. **Structured Response**: JSON format with shotID, outcome, shotType, and dual feedback structure. |
+## 3. System Architecture
+
+### Production Architecture with Threading Model
 
 ```
 iPhone (Client App)
-├─ Camera Integration              - AVCaptureSession with proper permissions and background processing
-├─ Training Session Manager        - **ENHANCED**: Core orchestrator with state management and coordination
-│   ├─ Shot Event Detector         - **ENHANCED**: Advanced pose analysis with VNDetectHumanBodyPoseRequest
-│   ├─ Smart Frame Selector        - Intelligent frame selection for optimal AI analysis
-│   ├─ Gemini Live API Client      - **NEW**: Real-time WebSocket client for low-latency communication
-│   ├─ Coaching Tips Manager       - **NEW**: Local coaching knowledge base with contextual selection
-│   └─ Response Renderer           - Visual feedback coordination and audio session management
-├─ Enhanced Audio System           - **ENHANCED**: AVSpeechSynthesizer with outcome-based modulation
-└─ Rich UI Layer (SwiftUI)         - **ENHANCED**: Advanced overlays, animations, and color-coded feedback
+├─ Camera Integration              - AVCaptureSession with thread-safe implementation
+├─ Training Session Manager        - Core orchestrator with 1 FPS throttling
+│   ├─ Shot Event Detector         - VNDetectTrajectoriesRequest with CMSampleBuffer
+│   ├─ Image Conversion Utils      - Thread-safe CMSampleBuffer → UIImage conversion
+│   ├─ Gemini Live Client          - WebSocket client with structured response handling
+│   ├─ Session Auth Service        - Ephemeral token authentication
+│   └─ Coaching Prompts            - The GOAT system prompt configuration
+├─ Threading Architecture
+│   ├─ Main Thread                 - UI updates, user interactions
+│   ├─ Camera Queue                - AVCaptureSession processing
+│   ├─ Vision Queue                - Computer vision analysis
+│   └─ Network Queue               - WebSocket communication
+└─ Rich UI Layer (SwiftUI)         - Full landscape support with proper orientation handling
 
 Cloud Services
-└─ Google Gemini Live API          - **NEW**: Real-time WebSocket connection (gemini-2.0-flash-exp)
-    ├─ Low-latency image analysis
-    ├─ Session management & resumption  
-    └─ JSON response streaming
+├─ Google Gemini Live API          - WebSocket (gemini-2.0-flash-exp)
+│   ├─ 1 FPS image analysis
+│   ├─ Structured JSON responses
+│   └─ The GOAT coaching persona
+└─ Backend Proxy Server            - Node.js ephemeral token service
+    ├─ Token generation & validation
+    ├─ Rate limiting
+    └─ Security layer
 ```
 
-**Key Architectural Improvements:**
-- **Direct Live API Integration**: Eliminates proxy complexity and reduces latency
-- **Enhanced Local Intelligence**: Advanced pose detection and contextual tip management
-- **Real-Time Communication**: WebSocket-based streaming for immediate feedback
-- **Rich Visual Experience**: Color-coded statistics and enhanced animations
+### Key Architectural Features:
+- **Thread-Safe Design**: Proper separation of UI, camera, vision, and network operations
+- **1 FPS Processing**: Intelligent frame throttling for efficient API usage
+- **Structured AI Responses**: JSON format with comprehensive coaching feedback
+- **Secure Authentication**: Production-ready ephemeral token system
+- **The GOAT Persona**: Sophisticated prompt engineering for expert-level coaching
 
-**ENHANCED** Typical Session Flow:
+### Typical Session Flow:
 
-**Setup**: Jordan places their iPhone on a tripod, opens LeBot_James, and taps "Start Training" on the enhanced login screen.
+1. **Authentication**: App requests ephemeral token from backend proxy server
 
-**Real-Time Connection**: The app establishes a WebSocket connection to Gemini Live API and configures the camera with proper permissions.
+2. **Session Setup**: WebSocket connection established with Gemini Live API using token
 
-**Advanced Monitoring**: The Shot Event Detector continuously analyzes pose data using VNDetectHumanBodyPoseRequest, detecting shooting stance transitions.
+3. **Camera Initialization**: AVCaptureSession starts on background thread with proper permissions
 
-**Intelligent Shot Detection**: Jordan takes a shot. The system detects the shooting motion sequence (stance → release) and triggers analysis.
+4. **1 FPS Monitoring**: TrainingSessionManager processes frames at 1 FPS while maintaining continuous shot detection
 
-**Smart Frame Selection**: The Smart Frame Selector identifies the optimal release frame for form analysis.
+5. **Shot Detection**: VNDetectTrajectoriesRequest analyzes CMSampleBuffer preserving timestamps
 
-**Live AI Analysis**: The frame is sent via WebSocket to Gemini Live API with an enhanced prompt: "You are LeBot James, an AI basketball coach. Analyze this shot with Michael Jordan-style authority..."
+6. **AI Analysis**: When 1-second interval passes, current frame converted to UIImage and sent to Gemini
 
-**Real-Time Response**: Gemini processes and streams back JSON response with outcome and coaching tip in under 1 second.
+7. **The GOAT Response**: Gemini 2.0 Flash returns structured JSON:
+   ```json
+   {
+     "shotID": "2024-01-15T14:30:22.123Z",
+     "outcome": "MAKE",
+     "shotType": "Mid-Range",
+     "analysis": {
+       "positiveFeedback": "Excellent form! Your elbow was perfectly aligned.",
+       "correctiveFeedback": "Plant those feet wider for better balance."
+     }
+   }
+   ```
 
-**Enhanced Feedback Rendering**:
-- **Visual**: Rich overlay with enhanced animations - large checkmark/X, "SWISH!" or "KEEP SHOOTING!", coaching tip text, and color-coded borders
-- **Audio**: Outcome-specific voice modulation delivers coaching tip with authority
-- **Statistics**: Real-time counter update with color-coded shooting percentage
+8. **Feedback Delivery**:
+   - **Visual**: Shot outcome overlay with animations
+   - **Audio**: Combined positive and corrective feedback
+   - **Stats**: Updated counter with color-coded percentage
 
-**Contextual Enhancement**: CoachingTipsManager provides fallback tips and prevents repetition.
-
-**Continuous Loop**: System immediately returns to monitoring, maintaining WebSocket connection for minimal latency on subsequent shots.
+9. **Continuous Loop**: System maintains connection for next shot
 
 4. UI/UX Design Considerations
 
@@ -114,55 +135,75 @@ Shot Result: A large, clear ✓ or ✗ icon centered on the hoop.
 
 Form Guides (Post-MVP): Simple lines, circles, or arrows to highlight a specific body part mentioned in the audio feedback (e.g., a line showing the ideal elbow angle).
 
-5. **UPDATED** Technical Challenges and Solutions
+## 5. Technical Implementation Details
 
-**Real-Time Performance & Low Latency**: **SOLVED** - The challenge was analyzing high-speed basketball actions with minimal delay.
+### Threading Architecture (CRITICAL)
+**Challenge**: UI freezing and "No valid presentationTimeStamp" errors
 
-**Solution Implemented**: Direct integration with Gemini Live API via WebSocket eliminates traditional request-response delays. Combined with advanced pose detection for precise shot timing, the system achieves sub-second feedback cycles.
+**Solution**:
+- All UI operations on main thread via `DispatchQueue.main.async`
+- Camera operations on dedicated background queue
+- Vision framework receives CMSampleBuffer preserving timestamps
+- WebSocket operations on separate queue
 
-**AI Accuracy & Coaching Quality**: **ENHANCED** - Ensuring relevant, non-repetitive basketball coaching.
+### 1 FPS Processing Strategy
+**Challenge**: Balancing real-time feedback with API efficiency
 
-**Solution Implemented**: 
-- Advanced prompt engineering with specific basketball coaching instructions
-- Comprehensive coaching_tips.json with categorized feedback (general, makes, misses, encouragement)
-- CoachingTipsManager prevents repetition and provides contextual fallbacks
-- Michael Jordan-style authority in feedback delivery
+**Solution**:
+```swift
+private var lastAnalysisTime: TimeInterval = 0
+private let analysisInterval: TimeInterval = 1.0 // 1 FPS
 
-**Shot Detection Accuracy**: **SOLVED** - Reliable detection of basketball shooting motions.
+func processFrame(_ sampleBuffer: CMSampleBuffer) {
+    let currentTime = CACurrentMediaTime()
+    if currentTime - lastAnalysisTime >= analysisInterval {
+        processFrameForAIAnalysis(sampleBuffer)
+    }
+}
+```
 
-**Solution Implemented**: 
-- VNDetectHumanBodyPoseRequest analyzes shooting pose transitions
-- Multi-criteria shooting stance detection (hand elevation, elbow alignment, hand proximity)
-- Fallback simulation system for testing and edge cases
-- Smart frame buffering for optimal analysis timing
+### The GOAT Prompt Engineering
+**Challenge**: Consistent, high-quality basketball coaching
 
-**Environmental Adaptability**: **ENHANCED** - Handling varied lighting and court conditions.
+**Solution**: Comprehensive system prompt with:
+- Persona definition (Michael Jordan/LeBron James spirit)
+- Structured analysis process
+- Strict JSON output format
+- Example responses for consistency
 
-**Solution Implemented**:
-- Smart frame quality assessment with brightness and resolution checks
-- Robust camera configuration with proper session management
-- Enhanced error handling and user feedback for setup issues
-- Background processing optimization for consistent performance
+### Security Architecture
+**Challenge**: Protecting API credentials
 
-**Cost Efficiency**: **OPTIMIZED** - Managing API costs while maintaining quality.
+**Solution**: 
+- Backend proxy generates ephemeral tokens
+- Tokens expire after 30 minutes
+- WebSocket uses token authentication
+- No API keys stored in client
 
-**Solution Implemented**:
-- Intelligent frame selection sends only optimal frames
-- Local coaching knowledge base reduces dependency on AI-generated tips
-- Efficient WebSocket connection reuse
-- Smart analysis triggering only on detected shot events
+## 6. Production Status & Future Vision
 
-6. **UPDATED** Conclusion
+LeBot_James is now a production-ready AI basketball coaching application that delivers structured, expert-level feedback through "The GOAT" persona. The implementation successfully combines thread-safe architecture, intelligent frame processing, and sophisticated AI integration.
 
-LeBot_James has evolved into a sophisticated, real-time AI basketball coaching application that delivers immediate, authoritative feedback to players. By leveraging advanced computer vision, Google's Gemini Live API, and enhanced user experience design, the app transforms a standard iPhone into a personal shooting coach with Michael Jordan-style authority.
+### Key Production Features:
+- **Thread-Safe Architecture**: Eliminated UI freezing and Vision framework errors
+- **1 FPS AI Processing**: Optimal balance between real-time feedback and efficiency  
+- **The GOAT Coaching**: Structured feedback with positive reinforcement and corrective critique
+- **Secure Authentication**: Production-ready ephemeral token system
+- **Full Landscape Support**: Professional camera experience in all orientations
 
-**Key Achievements in Current Implementation:**
-- **Real-Time Performance**: Sub-second feedback through Gemini Live API WebSocket integration
-- **Advanced Shot Detection**: Sophisticated pose analysis with VNDetectHumanBodyPoseRequest
-- **Rich User Experience**: Color-coded statistics, enhanced animations, and contextual feedback
-- **Intelligent Coaching**: Comprehensive coaching knowledge base with non-repetitive, outcome-specific feedback
-- **Professional Audio**: Outcome-based voice modulation for authoritative coaching delivery
+### Technical Excellence:
+```
+✅ CMSampleBuffer → UIImage conversion preserving timestamps
+✅ Proper main/background thread separation
+✅ WebSocket connection with automatic reconnection
+✅ Structured JSON responses with comprehensive feedback
+✅ 1 FPS throttling for API efficiency
+```
 
-The MVP successfully delivers on its core promise—shot counting and intelligent coaching—while establishing a robust foundation for future enhancements. The architecture combines cutting-edge AI capabilities with practical engineering excellence, creating an MVP that feels like a finished product.
+### Future Roadmap:
+1. **Advanced Analytics**: Shot charts, heat maps, progression tracking
+2. **Personalized Training**: AI-generated workout plans based on weaknesses
+3. **Social Features**: Share highlights, compete with friends
+4. **Expanded Coaching**: Dribbling, defense, and full game analysis
 
-**Future Roadmap**: The current implementation provides clear pathways for advanced features including detailed analytics, personalized training programs, multi-player sessions, and expanded coaching knowledge bases. By making every practice session smarter and more engaging, LeBot_James is positioned to become the definitive AI basketball coach for serious players.
+**LeBot_James transforms solo practice into professional training**, providing the immediate feedback loop necessary for rapid improvement. With "The GOAT" as your personal coach, every practice session becomes an opportunity for excellence.

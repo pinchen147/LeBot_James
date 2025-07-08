@@ -1,4 +1,5 @@
 import Foundation
+import UIKit
 
 class GeminiLiveClient: NSObject, URLSessionWebSocketDelegate {
     // MARK: - Properties
@@ -10,12 +11,18 @@ class GeminiLiveClient: NSObject, URLSessionWebSocketDelegate {
     var onConnectionChange: ((Bool) -> Void)?
     var onReceiveMessage: ((String) -> Void)?
     var onReceiveAnalysis: ((ShotAnalysisResult) -> Void)?
+    var onReceiveResponse: ((Result<CoachResponse, Error>) -> Void)?
     
     // Connection state
     private var isConnected = false
     private var isSessionConfigured = false
     private var currentToken: EphemeralToken?
     private var apiKey: String?
+    
+    // Public computed property for TrainingSessionManager
+    var isConnectedToAI: Bool {
+        return isConnected && isSessionConfigured
+    }
     
     // MARK: - Public Methods
     func connect(with ephemeralToken: EphemeralToken) {
@@ -97,25 +104,45 @@ class GeminiLiveClient: NSObject, URLSessionWebSocketDelegate {
         onConnectionChange?(false)
     }
     
-    func sendVideoFrame(imageData: Data, lastTip: String = "") {
-        guard isConnected && isSessionConfigured else {
-            print("❌ Not connected or session not configured")
+    func sendFrame(_ image: UIImage) {
+        guard isConnectedToAI else {
+            print("❌ Not connected to AI")
+            return
+        }
+        
+        guard let imageData = image.jpegData(compressionQuality: 0.7) else {
+            print("❌ Failed to convert image to JPEG data")
             return
         }
         
         let base64String = imageData.base64EncodedString()
+        let timestamp = ISO8601DateFormatter().string(from: Date())
         
-        // Send video frame as realtime input
-        let frameMessage: [String: Any] = [
-            "realtimeInput": [
-                "video": [
-                    "mimeType": "image/jpeg",
-                    "data": base64String
-                ]
+        // Create the clientContent message with image and analysis prompt
+        let message: [String: Any] = [
+            "clientContent": [
+                "turns": [
+                    [
+                        "role": "user",
+                        "parts": [
+                            [
+                                "text": CoachingPrompts.buildAnalysisRequest(timestamp: timestamp)
+                            ],
+                            [
+                                "inlineData": [
+                                    "mimeType": "image/jpeg",
+                                    "data": base64String
+                                ]
+                            ]
+                        ]
+                    ]
+                ],
+                "turnComplete": true
             ]
         ]
         
-        sendMessage(frameMessage)
+        sendMessage(message)
+        print("📸 Sent frame for analysis at \(timestamp)")
     }
     
     func sendImageWithPrompt(imageData: Data, lastTip: String = "") {
@@ -190,22 +217,7 @@ class GeminiLiveClient: NSObject, URLSessionWebSocketDelegate {
                 "systemInstruction": [
                     "parts": [
                         [
-                            "text": """
-                            You are LeBot James, an AI basketball coach. Analyze basketball shot videos and provide real-time feedback.
-                            
-                            For each shot, determine:
-                            1. Whether it was a make or miss
-                            2. Provide a specific, actionable coaching tip
-                            
-                            Return your response as valid JSON in this exact format:
-                            {
-                                "outcome": "make" or "miss",
-                                "tip": "Your specific coaching tip here (max 10 words)"
-                            }
-                            
-                            Focus on: shooting form, elbow alignment, follow-through, arc, balance.
-                            Be encouraging and specific.
-                            """
+                            "text": CoachingPrompts.goatSystemPrompt
                         ]
                     ]
                 ],
@@ -325,6 +337,29 @@ class GeminiLiveClient: NSObject, URLSessionWebSocketDelegate {
     }
     
     private func parseAnalysisResponse(_ text: String) {
+        // First try to parse as CoachResponse (new format)
+        do {
+            if let data = text.data(using: .utf8) {
+                let response = try JSONDecoder().decode(CoachResponse.self, from: data)
+                print("✅ Parsed CoachResponse: \(response.outcome) - \(response.analysis.positiveFeedback)")
+                
+                DispatchQueue.main.async {
+                    self.onReceiveResponse?(.success(response))
+                    
+                    // Also maintain backward compatibility
+                    let legacyResult = ShotAnalysisResult(
+                        outcome: response.shotOutcome,
+                        tip: response.analysis.positiveFeedback
+                    )
+                    self.onReceiveAnalysis?(legacyResult)
+                }
+                return
+            }
+        } catch {
+            print("⚠️ Failed to parse as CoachResponse: \(error)")
+        }
+        
+        // Fallback to legacy format
         do {
             if let data = text.data(using: .utf8),
                let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
@@ -337,10 +372,19 @@ class GeminiLiveClient: NSObject, URLSessionWebSocketDelegate {
                 DispatchQueue.main.async {
                     self.onReceiveAnalysis?(result)
                 }
+                print("✅ Parsed legacy format: \(outcome) - \(tip)")
             }
         } catch {
-            // If not JSON, it might be regular text
-            print("📝 Non-JSON response: \(text)")
+            print("❌ Failed to parse response as JSON: \(error)")
+            print("📝 Raw response: \(text)")
+            
+            // Return error via callback
+            DispatchQueue.main.async {
+                let parseError = NSError(domain: "GeminiParsingError", code: -1, userInfo: [
+                    NSLocalizedDescriptionKey: "Failed to parse AI response"
+                ])
+                self.onReceiveResponse?(.failure(parseError))
+            }
         }
     }
     

@@ -1,6 +1,9 @@
 import Foundation
 import ARKit
 import AVFoundation
+import UIKit
+import CoreMedia
+import VideoToolbox
 
 class TrainingSessionManager: NSObject, ObservableObject {
     // MARK: - Published Properties
@@ -18,6 +21,11 @@ class TrainingSessionManager: NSObject, ObservableObject {
     private let coachingTipsManager = CoachingTipsManager()
     let responseRenderer = ResponseRenderer() // Made public for AR integration
     private let speechSynthesizer = AVSpeechSynthesizer()
+    
+    // MARK: - 1 FPS Processing Properties
+    private var lastAnalysisTime: TimeInterval = 0
+    private let analysisInterval: TimeInterval = 1.0 // 1 FPS = 1 second interval
+    private var pendingFrameForAnalysis: CMSampleBuffer?
     
     private var isSessionActive = false
     @Published var lastShotOutcome: ShotOutcome?
@@ -82,16 +90,48 @@ class TrainingSessionManager: NSObject, ObservableObject {
     }
     
     func processFrame(_ sampleBuffer: CMSampleBuffer) {
-        guard isSessionActive, !isAnalyzing else { return }
+        guard isSessionActive else { return }
         
-        // Pass frame to shot detector for processing
-        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            // Pass the complete sample buffer to preserve timestamp
-            self?.shotDetector.processSampleBuffer(sampleBuffer) { shotEvent in
-                // Extract pixel buffer only when needed for display/analysis
-                if let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) {
-                    self?.handleShotEvent(shotEvent, frame: pixelBuffer)
+        // Store the current frame for potential analysis
+        self.pendingFrameForAnalysis = sampleBuffer
+        
+        // Check if it's time for AI analysis (1 FPS throttling)
+        let currentTime = CACurrentMediaTime()
+        if currentTime - lastAnalysisTime >= analysisInterval {
+            lastAnalysisTime = currentTime
+            processFrameForAIAnalysis(sampleBuffer)
+        }
+        
+        // Continue with shot detection for immediate feedback (if not analyzing)
+        if !isAnalyzing {
+            DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+                self?.shotDetector.processSampleBuffer(sampleBuffer) { shotEvent in
+                    if let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) {
+                        self?.handleShotEvent(shotEvent, frame: pixelBuffer)
+                    }
                 }
+            }
+        }
+    }
+    
+    // MARK: - AI Analysis Processing (1 FPS)
+    private func processFrameForAIAnalysis(_ sampleBuffer: CMSampleBuffer) {
+        guard geminiLiveClient.isConnectedToAI else {
+            print("⚠️ Not connected to AI - skipping analysis")
+            return
+        }
+        
+        // Convert CMSampleBuffer to UIImage for AI analysis
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let image = self?.convertSampleBufferToUIImage(sampleBuffer) else {
+                print("❌ Failed to convert sample buffer to UIImage")
+                return
+            }
+            
+            DispatchQueue.main.async {
+                self?.isAnalyzing = true
+                print("🔍 Sending frame to AI for analysis (1 FPS)")
+                self?.geminiLiveClient.sendFrame(image)
             }
         }
     }
@@ -123,6 +163,15 @@ class TrainingSessionManager: NSObject, ObservableObject {
             }
         }
         
+        // Configure AI response handling (new format)
+        geminiLiveClient.onReceiveResponse = { [weak self] result in
+            DispatchQueue.main.async {
+                self?.isAnalyzing = false
+                self?.handleAIAnalysisResult(result)
+            }
+        }
+        
+        // Keep backward compatibility
         geminiLiveClient.onReceiveAnalysis = { [weak self] result in
             DispatchQueue.main.async {
                 self?.processAnalysisResult(result)
