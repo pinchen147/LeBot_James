@@ -1,44 +1,68 @@
-1.0 Technical Overview
-1.1 Feature: LeBot_James: AI Basketball Coach (MVP)
-1.2 PDD Reference: LeBot_James: AI Basketball Coach – Product Design Document (MVP)
-1.3 Engineering Objective: To build a robust, performant, and testable native iOS application that provides real-time basketball shot counting and AI-driven form coaching. The system will use on-device computer vision to trigger analysis and a secure cloud backend proxy to interface with the Gemini AI model.
-1.4 Key Technical Decisions:
-Client Architecture: The core logic is implemented within a TrainingSessionManager for predictable and testable state management. This follows a clean architecture pattern with clear separation of concerns.
-Shot Detection Strategy: The MVP uses VNDetectHumanBodyPoseRequest to detect basketball shooting motions by analyzing pose transitions from shooting stance to release. This provides reliable shot event detection with fallback simulation for testing.
-API Integration: **UPDATED**: Direct integration with Google Gemini Live API via WebSocket connection for real-time, low-latency AI coaching. The API key is securely stored in the client for MVP simplicity, with future plans for serverless proxy architecture.
-Visual Feedback: Rich SwiftUI overlays provide immediate visual feedback including make/miss indicators, shooting percentages, and coaching tips displayed directly over the camera feed.
-Tech Stack: The app targets iOS 17+ leveraging latest Vision framework capabilities. Uses native URLSession for WebSocket connections to Gemini Live API, eliminating third-party networking dependencies.
-Data & State: Zero user authentication for MVP. All session data is ephemeral. Coaching knowledge base is a bundled coaching_tips.json file with contextual tip selection based on shot outcomes.
-Audio Feedback: Enhanced AVSpeechSynthesizer implementation with outcome-based voice modulation and proper audio session management for Michael Jordan-style coaching delivery.
-2.0 Finalized Architecture & Tech Stack
-2.1 System Architecture
-Generated mermaid
+# 1.0 Technical Overview
+## 1.1 Feature: LeBot_James: AI Basketball Coach (Production-Ready)
+## 1.2 PDD Reference: LeBot_James: AI Basketball Coach – Product Design Document (Production)
+## 1.3 Engineering Objective: 
+To build a robust, performant, and testable native iOS application that provides real-time basketball shot counting and AI-driven form coaching. The system uses on-device computer vision with proper threading for frame analysis and a hybrid cloud architecture supporting both Gemini Live API and secure backend proxy.
+
+## 1.4 Key Technical Decisions:
+- **Client Architecture**: Clean architecture with TrainingSessionManager orchestrating state, camera, vision, and AI services with proper threading separation
+- **Shot Detection Strategy**: Advanced VNDetectTrajectoriesRequest and motion detection using Vision framework with CMSampleBuffer for timestamp preservation
+- **API Integration**: **PRODUCTION READY**: Hybrid architecture supporting both Gemini Live API (WebSocket) and secure backend proxy with ephemeral token authentication
+- **Threading Model**: Proper main/background thread separation for UI updates and camera processing to eliminate threading violations
+- **Visual Feedback**: Enhanced SwiftUI overlays with landscape orientation support and full-screen camera views
+- **Tech Stack**: iOS 17+ with latest Vision framework, native URLSession WebSocket, and proper AVCaptureSession threading
+- **Security**: Ephemeral token system with secure backend proxy and API key management
+- **Audio Feedback**: Enhanced AVSpeechSynthesizer with Michael Jordan-style coaching delivery
+# 2.0 Production Architecture & Tech Stack
+## 2.1 System Architecture
+
+```mermaid
 graph TD
     subgraph "User's iPhone"
-        A[iOS App: SwiftUI Views] -- Displays Camera Feed & Overlays --> U(User);
-        A -- User Actions (Start/End Session) --> B[TrainingSessionManager];
-        B -- Controls --> C[ARViewRepresentable AVCaptureSession];
-        C -- Video Frames --> D[ShotEventDetector];
-        D -- Uses --> E[Vision Framework: VNDetectHumanBodyPoseRequest];
-        D -- Shot Detected Event --> B;
-        B -- Triggers Analysis --> F[GeminiLiveAPIClient];
-        F -- WebSocket Connection --> G[Google Gemini Live API];
-        B -- Receives Response --> H[Response Processing];
-        H -- Updates UI State --> A;
-        H -- Triggers Audio --> I[Enhanced AVSpeechSynthesizer];
-        K[CoachingTipsManager] -- Loads --> L[coaching_tips.json];
-        K -- Provides Contextual Tips --> B;
+        A[CameraTrainingView: SwiftUI] --> B[TrainingSessionManager]
+        B --> C[ARViewRepresentable]
+        C --> D[AVCaptureSession]
+        D -->|CMSampleBuffer| E[ShotEventDetector]
+        E -->|VNDetectTrajectoriesRequest| F[Vision Framework]
+        E -->|Shot Event| B
+        
+        B --> G[Authentication Flow]
+        G -->|Ephemeral Token| H[GeminiLiveClient]
+        G -->|Fallback| I[Backend Proxy]
+        
+        H -->|WebSocket| J[Gemini Live API]
+        I -->|HTTPS| K[Node.js Backend]
+        K -->|REST API| L[Gemini REST API]
+        
+        B --> M[CoachingTipsManager]
+        M --> N[coaching_tips.json]
+        
+        B --> O[ResponseRenderer]
+        B --> P[AVSpeechSynthesizer]
+        
+        Q[SessionAuthService] --> R[Backend Auth Server]
+    end
+    
+    subgraph "Cloud Infrastructure"
+        J[Gemini Live API]
+        L[Gemini REST API]
+        R[Backend Auth Server]
+        K[Node.js Proxy Server]
+    end
+    
+    subgraph "Threading Model"
+        S[Main Thread: UI Updates]
+        T[Background Thread: Camera Session]
+        U[Background Thread: Vision Processing]
+        V[Background Thread: Network Requests]
     end
 
-    subgraph "Cloud Services"
-        G -- Real-time WebSocket --> M[Gemini 2.0 Flash Live Model];
-        M -- JSON Response --> F;
-    end
-
-    style U fill:#fff,stroke:#333,stroke-width:2px
-    style M fill:#f9f,stroke:#333,stroke-width:2px
-Use code with caution.
-Mermaid
+    style A fill:#e1f5fe
+    style J fill:#f3e5f5
+    style L fill:#f3e5f5
+    style R fill:#e8f5e8
+    style K fill:#e8f5e8
+```
 2.2 Final Tech Stack
 Category	Technology	Version	Rationale/Notes
 Mobile Platform	iOS	17.0+	To use the latest, most performant SwiftUI & Vision APIs.
@@ -48,39 +72,58 @@ Dependencies	Swift Package Manager	-	Apple's standard for dependency management.
 Networking	Native URLSession	-	**UPDATED**: WebSocket connections to Gemini Live API using native URLSession for real-time communication.
 On-Device Vision	Apple Vision Framework	-	Native, high-performance framework. Advanced pose analysis with VNDetectHumanBodyPoseRequest.
 Audio	AVFoundation	-	Enhanced AVSpeechSynthesizer with outcome-based voice modulation and audio session management.
-AI Model	**UPDATED**: Google Gemini Live API	gemini-2.0-flash-exp	Real-time multimodal AI with WebSocket support for low-latency coaching feedback.
+AI Model	**PRODUCTION**: Hybrid Gemini Integration	gemini-2.0-flash-exp + REST	Real-time Live API via WebSocket with secure backend proxy fallback using ephemeral tokens.
 Camera Integration	AVCaptureSession	-	Direct camera integration with proper permissions handling and background processing.
 Configuration	Config Management	-	Centralized app configuration with secure API key storage and environment-specific settings.
 CI/CD	GitHub Actions	-	For automated linting, testing, and building on PRs and merges.
 Linting	SwiftLint	0.54+	To enforce consistent code style and best practices.
-2.3 Directory Structure
-Generated plaintext
+## 2.3 Current Directory Structure
+
+```
 LeBot James/
-├── LeBot_JamesApp.swift           # App entry point
-├── ContentView.swift              # Root view controller
-├── Assets.xcassets/               # Images, icons, etc.
-├── Info.plist                     # App configuration and permissions
+├── LeBot_JamesApp.swift              # App entry point
+├── ContentView.swift                 # Root view controller
+├── Assets.xcassets/                  # Images, icons, app resources
+├── Info.plist                       # App configuration and permissions
 ├── Configuration/
-│   ├── Config.swift              # Centralized configuration management
-│   └── AppConfig.swift           # Configuration access layer
+│   ├── Config.swift                 # Centralized configuration management
+│   └── AppConfig.swift              # Configuration access layer
 ├── Resources/
-│   └── coaching_tips.json        # Comprehensive coaching knowledge base with contextual tips
+│   └── coaching_tips.json           # Coaching knowledge base (18 tips loaded)
 ├── Managers/
-│   ├── TrainingSessionManager.swift    # Core session orchestration with state management
-│   ├── ShotEventDetector.swift        # Advanced Vision-based shot detection with pose analysis
-│   ├── SmartFrameSelector.swift       # Intelligent frame selection for optimal AI analysis
-│   ├── GeminiLiveAPIClient.swift      # **NEW**: Real-time WebSocket client for Gemini Live API
-│   ├── CoachingTipsManager.swift      # **NEW**: Contextual coaching tips management
-│   ├── ResponseRenderer.swift          # Visual feedback rendering
-│   └── AIAnalysisClient.swift         # Legacy analysis client (replaced by Live API)
+│   ├── TrainingSessionManager.swift # **ENHANCED**: Core session orchestrator with CMSampleBuffer processing
+│   ├── ShotEventDetector.swift      # **FIXED**: Vision framework with proper timestamp preservation
+│   ├── SmartFrameSelector.swift     # Intelligent frame selection for AI analysis
+│   ├── GeminiLiveClient.swift       # **PRODUCTION**: WebSocket client for Gemini Live API
+│   ├── GeminiLiveAPIClient.swift    # Legacy Live API client
+│   ├── GeminiFallbackClient.swift   # Fallback REST API client
+│   ├── SessionAuthService.swift     # **NEW**: Ephemeral token authentication service
+│   ├── CoachingTipsManager.swift    # Contextual coaching tips management
+│   ├── ResponseRenderer.swift       # Visual feedback rendering
+│   └── AIAnalysisClient.swift       # Legacy REST API client
 ├── Views/
-│   ├── LoginView.swift                # Entry/onboarding screen
-│   ├── CameraTrainingView.swift       # **ENHANCED**: Main training interface with rich overlays
-│   └── ARViewRepresentable.swift      # **ENHANCED**: Camera integration with proper permissions
-└── Tests/
-    ├── LeBot JamesTests/              # Unit tests
-    └── LeBot JamesUITests/            # E2E tests
-Use code with caution.
+│   ├── LoginView.swift              # Entry/onboarding screen
+│   ├── CameraTrainingView.swift     # **FIXED**: Main training interface with landscape support
+│   └── ARViewRepresentable.swift    # **FIXED**: Camera integration with proper threading
+├── Tests/
+│   ├── LeBot JamesTests/            # Unit tests
+│   └── LeBot JamesUITests/          # E2E tests
+├── Backend/                         # **NEW**: Node.js backend proxy server
+│   ├── src/
+│   │   └── server.ts               # Express server with ephemeral token auth
+│   ├── package.json
+│   └── tsconfig.json
+├── Scripts/                         # **NEW**: Development and deployment scripts
+│   ├── diagnose-connection.sh       # Connection diagnostics
+│   ├── test-live-api.sh            # Live API testing
+│   └── setup-config.sh             # Configuration setup
+├── docs/
+│   ├── engineeringFeatureDoc.md     # This document
+│   ├── productDesignDoc.md          # Product requirements
+│   ├── EPHEMERAL_TOKEN_IMPLEMENTATION.md # Auth implementation guide
+│   └── LIVE_API_TROUBLESHOOTING.md # Debugging guide
+└── README.md                        # Project overview and setup
+```
 3.0 Data Model & API Contract
 3.1 Local Data
 No database schema is required for the MVP. The coaching knowledge base is an enhanced local JSON file with contextual tip categories.
@@ -114,16 +157,28 @@ Generated json
 Use code with caution.
 Json
 3.2 API Integration Specifications
-**UPDATED**: The iOS client now connects directly to Google Gemini Live API via WebSocket for real-time communication.
+**PRODUCTION READY**: Hybrid authentication system supporting both Gemini Live API and secure backend proxy.
 
-WebSocket Endpoint: wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent
+### Primary Flow: Ephemeral Token Authentication
+1. **SessionAuthService** requests ephemeral token from backend
+2. Backend validates request and issues time-limited token
+3. **GeminiLiveClient** connects to Live API using ephemeral token
+4. Real-time WebSocket communication for shot analysis
 
-Authentication: Direct API key authentication with query parameter
-Connection Flow:
-1. Establish WebSocket connection with API key
-2. Send setup message with model configuration (gemini-2.0-flash-exp)
-3. Exchange real-time messages for shot analysis
-4. Handle session management and reconnection
+### Fallback Flow: Direct API Key (Development)
+- **GeminiFallbackClient** for development environments
+- Direct API key authentication (development only)
+- REST API integration for environments without Live API support
+
+### Backend Proxy Architecture
+**Endpoint**: `https://your-backend.com/api/ephemeral-token`
+**Authentication**: Bearer token or API key validation
+**Security**: Rate limiting, token expiration, request validation
+
+### WebSocket Connection (Live API)
+**Endpoint**: `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent`
+**Authentication**: Ephemeral token via query parameter
+**Fallback**: Automatic fallback to REST API on WebSocket failure
 
 Message Format:
 Setup Message:
@@ -188,14 +243,25 @@ Error Responses:
 Module	Responsibility	Key Dependencies
 analyzeShot (Cloud Function)	Acts as a secure proxy. Validates the request, injects the GEMINI_API_KEY, constructs the prompt for Gemini, calls the Gemini API, parses the response, and forwards a clean JSON object to the client.	firebase-functions, Google AI SDK
 4.2 iOS Component Responsibilities
-Component/Module	Responsibility	Props/Key Dependencies
-TrainingSessionManager.swift	**UPDATED**: Core session orchestrator managing state, camera, vision, and AI services. Handles shot counting, feedback coordination, and audio session management.	ShotEventDetector, GeminiLiveAPIClient, CoachingTipsManager, AVSpeechSynthesizer
-CameraTrainingView.swift	**ENHANCED**: Main training interface with rich visual overlays, real-time shot counters, and contextual feedback display. Includes enhanced animations and color-coded performance indicators.	@StateObject TrainingSessionManager
-ShotEventDetector.swift	**ENHANCED**: Advanced pose-based shot detection using VNDetectHumanBodyPoseRequest. Analyzes shooting motion transitions from stance to release with fallback simulation.	Vision framework
-GeminiLiveAPIClient.swift	**NEW**: Real-time WebSocket client for Gemini Live API. Manages connection state, message handling, session resumption, and error recovery.	URLSession WebSocket
-CoachingTipsManager.swift	**NEW**: Contextual coaching tips management with outcome-based tip selection. Loads and manages categorized coaching knowledge base.	coaching_tips.json
-ARViewRepresentable.swift	**ENHANCED**: Camera integration with proper permissions handling, session configuration, and frame processing delegation.	AVCaptureSession, TrainingSessionManager
-ResponseRenderer.swift	Visual feedback rendering for shot outcomes and coaching tips.	ShotOutcome
+## 4.2 iOS Component Responsibilities
+
+| Component/Module | Responsibility | Key Dependencies | Status |
+|------------------|----------------|------------------|--------|
+| **TrainingSessionManager.swift** | **PRODUCTION**: Core session orchestrator with CMSampleBuffer processing, hybrid authentication, and proper threading | ShotEventDetector, GeminiLiveClient, SessionAuthService, CoachingTipsManager | ✅ Production Ready |
+| **CameraTrainingView.swift** | **FIXED**: Main training interface with landscape support, full-screen camera view, and rich overlays | @StateObject TrainingSessionManager | ✅ Landscape Fixed |
+| **ShotEventDetector.swift** | **FIXED**: Vision framework integration with CMSampleBuffer for timestamp preservation, VNDetectTrajectoriesRequest for motion detection | Vision framework, AVFoundation | ✅ Threading Fixed |
+| **ARViewRepresentable.swift** | **FIXED**: Camera integration with proper main/background thread separation and orientation handling | AVCaptureSession, TrainingSessionManager | ✅ Threading Fixed |
+| **GeminiLiveClient.swift** | **PRODUCTION**: WebSocket client for Gemini Live API with connection management and error recovery | URLSession WebSocket, SessionAuthService | ✅ Production Ready |
+| **SessionAuthService.swift** | **NEW**: Ephemeral token authentication service with backend integration | URLSession, Config | ✅ Security Ready |
+| **CoachingTipsManager.swift** | Contextual coaching tips management with 18 loaded tips | coaching_tips.json | ✅ Ready |
+| **ResponseRenderer.swift** | Visual feedback rendering for shot outcomes | ShotOutcome | ✅ Ready |
+
+### Recent Critical Fixes Applied:
+1. **Threading Violations Fixed**: All UI operations moved to main thread
+2. **Vision Framework Fixed**: CMSampleBuffer preservation for timestamp data
+3. **Landscape Support**: Full-screen camera view in all orientations
+4. **Authentication System**: Ephemeral token implementation completed
+5. **Error Handling**: Comprehensive logging and fallback mechanisms
 5.0 Implementation Plan: A Step-by-Step Checklist
 Phase 0: Setup & Scaffolding
 Initialize Xcode project with the defined directory structure.
@@ -234,18 +300,64 @@ Goal: Verify that the ViewModel correctly initiates a network call and processes
 Target: Key user flows.
 Flow 1 (Happy Path): Launch App -> Tap "Start Session" -> Verify Camera View is active -> Use launch arguments to mock a shot event -> Verify counter increments and feedback overlay appears.
 Goal: Ensure the integrated app behaves as expected from the user's perspective.
-7.0 Deployment & DevOps
-7.1 Environment Variables
-Firebase Cloud Function: GEMINI_API_KEY (set in the Google Cloud Secret Manager).
-iOS App: API_PROXY_URL (stored in the app's .plist file, using different plists for Debug/Release builds).
-7.2 Build Process
-Local builds via Xcode (Cmd+R, Cmd+B).
-CI builds via xcodebuild build-for-testing ... and xcodebuild test ... commands.
-7.3 CI/CD Pipeline (GitHub Actions)
-On Pull Request:
-Lint: Run swiftlint.
-Test: Run all XCTest unit and integration tests.
-Build: Ensure the app compiles for release.
-On Merge to main:
-All PR steps pass.
-(Manual Trigger) Deploy: A workflow builds, archives, and uploads the app to TestFlight for internal testing.
+# 7.0 Deployment & DevOps
+
+## 7.1 Environment Configuration
+
+### Backend Environment Variables
+- `GEMINI_API_KEY`: Gemini API key (stored in environment secrets)
+- `JWT_SECRET`: Token signing secret
+- `NODE_ENV`: Environment (development/production)
+- `PORT`: Server port configuration
+
+### iOS App Configuration
+- `API_PROXY_URL`: Backend proxy URL (plist configuration)
+- `GEMINI_API_KEY`: Direct API key (development only)
+- `Environment`: Build configuration (Debug/Release)
+
+## 7.2 Build Process
+
+### Local Development
+```bash
+# iOS App
+xcodebuild -scheme "LeBot James" -destination "generic/platform=iOS Simulator"
+
+# Backend Server
+cd Backend && npm install && npm run dev
+
+# Setup Scripts
+./Scripts/setup-config.sh
+./Scripts/test-live-api.sh
+```
+
+### Production Deployment
+1. **iOS App**: Xcode Archive → TestFlight → App Store
+2. **Backend**: Node.js deployment to cloud provider
+3. **Configuration**: Environment-specific settings
+
+## 7.3 Monitoring & Diagnostics
+
+### Debug Tools
+- `Scripts/diagnose-connection.sh`: Connection diagnostics
+- `Scripts/test-live-api.sh`: API connectivity testing
+- Console logging with detailed error reporting
+- Main Thread Checker for threading validation
+
+### Performance Metrics
+- Vision framework processing time
+- WebSocket connection stability
+- Camera frame processing rate
+- Authentication token refresh cycles
+
+## 7.4 Security Considerations
+
+### Production Security
+- Ephemeral token system with time-based expiration
+- Rate limiting on backend endpoints
+- API key rotation capabilities
+- Secure credential storage
+
+### Development Security
+- Environment-specific configurations
+- Debug-only features disabled in production
+- Comprehensive error handling without information leakage

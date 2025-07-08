@@ -44,30 +44,25 @@ class TrainingSessionManager: NSObject, ObservableObject {
         
         print("🚀 Starting training session...")
         
-        // For now, connect directly with API key until ephemeral token service is deployed
-        let apiKey = Config.getAPIKey()
-        if !apiKey.isEmpty && apiKey != "YOUR_GEMINI_API_KEY_HERE" {
-            print("🔑 Connecting to Live API with API key...")
-            self.geminiLiveClient.connectWithAPIKey(apiKey)
-        } else {
-            print("❌ No valid API key found, using fallback REST API only")
-        }
-        
-        // Later, when token service is deployed, uncomment this:
-        /*
-        authService.fetchEphemeralToken { [weak self] token in
-            guard let self = self, let token = token else {
-                print("❌ Failed to get ephemeral token, using fallback REST API")
-                return
+        // Try ephemeral token first (production mode)
+        fetchEphemeralToken { [weak self] token in
+            guard let self = self else { return }
+            
+            if let token = token {
+                print("🔑 Connecting to Live API with ephemeral token...")
+                self.currentToken = token
+                self.geminiLiveClient.connect(with: token)
+            } else {
+                print("⚠️ Failed to get ephemeral token, falling back to API key (development mode)")
+                let apiKey = Config.getAPIKey()
+                if !apiKey.isEmpty && apiKey != "YOUR_GEMINI_API_KEY_HERE" {
+                    print("🔑 Connecting to Live API with API key...")
+                    self.geminiLiveClient.connectWithAPIKey(apiKey)
+                } else {
+                    print("❌ No valid API key found, using fallback REST API only")
+                }
             }
-            
-            self.currentToken = token
-            print("✅ Ephemeral token acquired, connecting to Live API...")
-            
-            // Connect to Gemini Live API
-            self.geminiLiveClient.connect(with: token)
         }
-        */
         
         print("✅ Training session started")
     }
@@ -86,20 +81,33 @@ class TrainingSessionManager: NSObject, ObservableObject {
         print("Training session ended - Makes: \(makes)/\(totalShots)")
     }
     
-    func processFrame(_ pixelBuffer: CVPixelBuffer) {
+    func processFrame(_ sampleBuffer: CMSampleBuffer) {
         guard isSessionActive, !isAnalyzing else { return }
         
         // Pass frame to shot detector for processing
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            // Create a local copy to avoid capture warnings
-            let frameBuffer = pixelBuffer
-            self?.shotDetector.processPixelBuffer(frameBuffer) { shotEvent in
-                self?.handleShotEvent(shotEvent, frame: frameBuffer)
+            // Pass the complete sample buffer to preserve timestamp
+            self?.shotDetector.processSampleBuffer(sampleBuffer) { shotEvent in
+                // Extract pixel buffer only when needed for display/analysis
+                if let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) {
+                    self?.handleShotEvent(shotEvent, frame: pixelBuffer)
+                }
             }
         }
     }
     
     // MARK: - Private Methods
+    private func fetchEphemeralToken(completion: @escaping (EphemeralToken?) -> Void) {
+        authService.fetchEphemeralToken { token in
+            if let token = token {
+                print("✅ Ephemeral token received successfully!")
+            } else {
+                print("❌ Failed to receive ephemeral token")
+            }
+            completion(token)
+        }
+    }
+    
     private func setupComponents() {
         // Configure speech synthesizer
         speechSynthesizer.delegate = self
@@ -173,8 +181,8 @@ class TrainingSessionManager: NSObject, ObservableObject {
             return
         }
         
-        // Send frame to Live API
-        geminiLiveClient.sendFrame(imageData: imageData, lastTip: lastTipGiven)
+        // Send image with prompt for shot analysis
+        geminiLiveClient.sendImageWithPrompt(imageData: imageData, lastTip: lastTipGiven)
     }
     
     private func imageFromPixelBuffer(_ pixelBuffer: CVPixelBuffer) -> UIImage? {

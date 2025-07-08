@@ -10,6 +10,15 @@ struct ARViewRepresentable: UIViewRepresentable {
         let view = UIView()
         view.backgroundColor = .black
         
+        // Setup orientation change notification
+        NotificationCenter.default.addObserver(
+            forName: UIDevice.orientationDidChangeNotification,
+            object: nil,
+            queue: .main
+        ) { _ in
+            context.coordinator.handleOrientationChange(view: view)
+        }
+        
         // Check current camera permission status
         let authStatus = AVCaptureDevice.authorizationStatus(for: .video)
         
@@ -43,7 +52,25 @@ struct ARViewRepresentable: UIViewRepresentable {
         // Update preview layer frame when view bounds change
         DispatchQueue.main.async {
             if let previewLayer = uiView.layer.sublayers?.first(where: { $0 is AVCaptureVideoPreviewLayer }) as? AVCaptureVideoPreviewLayer {
+                // Always update frame to match the view bounds
                 previewLayer.frame = uiView.bounds
+                
+                // Update video orientation based on current device orientation
+                if let connection = previewLayer.connection {
+                    if connection.isVideoOrientationSupported {
+                        context.coordinator.getCurrentVideoOrientation { orientation in
+                            connection.videoOrientation = orientation
+                            print("📱 Updated video orientation to: \(orientation)")
+                        }
+                    }
+                }
+                
+                // Force layout update
+                CATransaction.begin()
+                CATransaction.setDisableActions(true)
+                previewLayer.frame = uiView.bounds
+                CATransaction.commit()
+                
                 print("📐 Updated preview layer frame: \(uiView.bounds)")
             }
         }
@@ -80,6 +107,16 @@ struct ARViewRepresentable: UIViewRepresentable {
                 view.layer.insertSublayer(previewLayer, at: 0)
                 
                 print("📐 Preview layer added with frame: \(view.bounds)")
+                
+                // Set the correct orientation for the preview layer
+                if let connection = previewLayer.connection {
+                    if connection.isVideoOrientationSupported {
+                        coordinator.getCurrentVideoOrientation { orientation in
+                            connection.videoOrientation = orientation
+                            print("📱 Preview layer orientation set to: \(orientation)")
+                        }
+                    }
+                }
                 
                 // Start the capture session
                 DispatchQueue.global(qos: .userInitiated).async {
@@ -195,6 +232,7 @@ struct ARViewRepresentable: UIViewRepresentable {
                 // Configure connection
                 if let connection = videoOutput.connection(with: .video) {
                     if connection.isVideoOrientationSupported {
+                        // Set default orientation - will be updated on main thread later
                         connection.videoOrientation = .portrait
                     }
                     print("📹 Video connection configured")
@@ -210,9 +248,53 @@ struct ARViewRepresentable: UIViewRepresentable {
 
         // This delegate method is called for each frame from the camera
         func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
-            guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
-            // Pass the pixel buffer to the session manager for processing
-            sessionManager.processFrame(pixelBuffer)
+            // Pass the complete sample buffer to preserve timestamp information
+            sessionManager.processFrame(sampleBuffer)
+        }
+        
+        // Helper method to get current video orientation (thread-safe)
+        func getCurrentVideoOrientation(completion: @escaping (AVCaptureVideoOrientation) -> Void) {
+            DispatchQueue.main.async {
+                // Get the interface orientation for more reliable orientation detection
+                let interfaceOrientation = UIApplication.shared.connectedScenes
+                    .compactMap { $0 as? UIWindowScene }
+                    .first?
+                    .interfaceOrientation ?? .portrait
+                
+                let orientation: AVCaptureVideoOrientation
+                switch interfaceOrientation {
+                case .landscapeLeft:
+                    orientation = .landscapeLeft
+                case .landscapeRight:
+                    orientation = .landscapeRight
+                case .portraitUpsideDown:
+                    orientation = .portraitUpsideDown
+                default:
+                    orientation = .portrait
+                }
+                
+                completion(orientation)
+            }
+        }
+        
+        // Handle orientation changes
+        func handleOrientationChange(view: UIView) {
+            DispatchQueue.main.async {
+                if let previewLayer = view.layer.sublayers?.first(where: { $0 is AVCaptureVideoPreviewLayer }) as? AVCaptureVideoPreviewLayer {
+                    // Update frame to match view bounds
+                    previewLayer.frame = view.bounds
+                    
+                    // Update video orientation
+                    if let connection = previewLayer.connection {
+                        if connection.isVideoOrientationSupported {
+                            self.getCurrentVideoOrientation { orientation in
+                                connection.videoOrientation = orientation
+                                print("🔄 Orientation changed to: \(orientation)")
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }

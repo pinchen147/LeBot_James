@@ -3,9 +3,10 @@
   "version": "1.0.0",
   "description": "Token service for LeBot James ephemeral authentication",
   "main": "dist/server.js",
+  "type": "module",
   "scripts": {
     "build": "tsc",
-    "dev": "ts-node src/server.ts",
+    "dev": "ts-node --esm src/server.ts",
     "start": "node dist/server.js",
     "test": "jest"
   },
@@ -18,7 +19,7 @@
     "@google/generative-ai": "^0.2.1",
     "dotenv": "^16.3.1",
     "helmet": "^7.0.0",
-    "ratelimit": "^2.0.0"
+    "express-rate-limit": "^6.7.0"
   },
   "devDependencies": {
     "@types/express": "^4.17.17",

@@ -5,10 +5,12 @@ An iOS app that provides real-time AI coaching for basketball shooting practice 
 ## Features
 
 - **Automatic Shot Detection**: Uses computer vision to detect when you take a shot
-- **Real-time AI Coaching**: Provides personalized feedback on your shooting form
+- **Real-time AI Coaching**: Powered by Gemini 2.0 Flash via Live API for ultra-low latency
+- **Direct WebSocket Connection**: Client connects directly to Gemini for minimal delay
 - **Shot Counter**: Tracks makes and misses with visual AR overlays
 - **Voice Feedback**: Audio coaching tips delivered via text-to-speech
 - **AR Visualization**: Augmented reality overlays show shot results and form guidance
+- **Ephemeral Token Support**: Production-ready security with short-lived tokens
 
 ## Prerequisites
 
@@ -65,6 +67,13 @@ cd "LeBot James"
 
 ## Architecture
 
+### Live API Integration
+The app uses Google's Gemini Live API for real-time shot analysis:
+- **Direct WebSocket Connection**: Bypasses backend proxy for minimal latency
+- **Gemini 2.0 Flash**: Optimized for fast video/image analysis
+- **Ephemeral Tokens**: Short-lived tokens for secure client-side connections
+- **Fallback Support**: Automatically switches to REST API if Live API is unavailable
+
 The app follows a clean architecture pattern:
 
 - **Views**: SwiftUI interfaces for login and camera training
@@ -88,7 +97,16 @@ The app follows a clean architecture pattern:
 ### Google Gemini API
 1. Go to [Google AI Studio](https://makersuite.google.com/app/apikey)
 2. Create a new API key
-3. Add it to your `.env` file as `GEMINI_API_KEY`
+3. Add it to your `Config.swift` file
+
+### Backend Token Service (Optional for Production)
+For production deployments with ephemeral tokens:
+```bash
+cd Backend
+npm install
+npm run dev  # For local testing
+```
+Update `Config.swift` with your deployed backend URL.
 
 ## Development
 

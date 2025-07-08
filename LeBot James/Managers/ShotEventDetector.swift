@@ -1,6 +1,7 @@
 import Foundation
 import ARKit
 import Vision
+import AVFoundation
 
 class ShotEventDetector {
     // MARK: - Properties
@@ -25,6 +26,29 @@ class ShotEventDetector {
         processPixelBuffer(frame.capturedImage, completion: completion)
     }
     
+    func processSampleBuffer(_ sampleBuffer: CMSampleBuffer, completion: @escaping (ShotEvent) -> Void) {
+        // Extract pixel buffer for buffer management
+        guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
+        
+        // Add frame to buffer
+        frameBuffer.append(pixelBuffer)
+        
+        // Keep buffer size manageable
+        if frameBuffer.count > bufferSize {
+            frameBuffer.removeFirst()
+        }
+        
+        // Skip if already processing
+        guard !isProcessing else { return }
+        
+        // Detect motion patterns using complete sample buffer (preserves timestamp)
+        detectShotMotion(in: sampleBuffer) { [weak self] shotDetected in
+            if shotDetected {
+                self?.processShotEvent(completion: completion)
+            }
+        }
+    }
+    
     func processPixelBuffer(_ pixelBuffer: CVPixelBuffer, completion: @escaping (ShotEvent) -> Void) {
         // Add frame to buffer
         frameBuffer.append(pixelBuffer)
@@ -46,6 +70,25 @@ class ShotEventDetector {
     }
     
     // MARK: - Private Methods
+    // NEW: Method that uses CMSampleBuffer to preserve timestamp (CORRECT WAY)
+    private func detectShotMotion(in sampleBuffer: CMSampleBuffer, completion: @escaping (Bool) -> Void) {
+        // Store the completion for use in the Vision completion handler
+        self.pendingCompletion = { shotEvent in
+            completion(true)
+        }
+        
+        // Use Vision framework with complete sample buffer to preserve timestamp
+        let handler = VNImageRequestHandler(cmSampleBuffer: sampleBuffer, orientation: .up, options: [:])
+        
+        do {
+            try handler.perform([motionRequest])
+        } catch {
+            print("Motion detection failed: \(error)")
+            completion(false)
+        }
+    }
+    
+    // LEGACY: Method that uses CVPixelBuffer (kept for backward compatibility)
     private func detectShotMotion(in pixelBuffer: CVPixelBuffer, completion: @escaping (Bool) -> Void) {
         // Store the completion for use in the Vision completion handler
         self.pendingCompletion = { shotEvent in

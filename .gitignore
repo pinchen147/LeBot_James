@@ -1,5 +1,12 @@
 # Environment variables
-.env
+.env*
+!/.env.example
+
+# Node.js
+Backend/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
 # Configuration files with secrets
 LeBot James/Configuration/Config.swift

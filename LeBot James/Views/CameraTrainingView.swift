@@ -15,7 +15,7 @@ struct CameraTrainingView: View {
         ZStack {
             // AR Camera View
             ARViewRepresentable(sessionManager: sessionManager)
-                .ignoresSafeArea()
+                .ignoresSafeArea(.all)
             
             // UI Overlays
             VStack {
